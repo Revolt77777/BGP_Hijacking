@@ -30,7 +30,7 @@ parser.add_argument('--sleep', default=3, type=int)
 args = parser.parse_args()
 
 FLAGS_rogue_as = args.rogue
-ROGUE_AS_NAME = 'R6'
+ROGUE_AS_NAME = 'R4'
 
 def log(s, col="green"):
     print(T.colored(s, col))
@@ -94,50 +94,6 @@ class SimpleTopo(Topo):
         self.addLink('R2', 'R3')
         self.addLink('R1', 'R4')
 
-class ComplexTopo(Topo):
-    # Complex Topo in part 1
-
-    def __init__(self):
-        super(ComplexTopo, self ).__init__()
-
-        hosts = []
-
-        def create_router_and_hosts(as_num: int):
-            router = f'R{as_num}'
-            self.addSwitch(router)
-            for host_num in [1, 2]:
-                host = self.addNode(f'h{as_num}-{host_num}')
-                hosts.append(host)
-                self.addLink(router, host)
-
-        #
-        # create the ASs
-        #
-        # Each AS has one routers and two hosts
-        # - AS1 has a single router (R1) and two hosts (h1-1, h1-2)
-        # - AS2 has a single router (R2) and two hosts (h2-1, h2-2)
-        # - AS3 has a single router (R3) and two hosts (h3-1, h3-2)
-        # - AS4 has a single router (R4) and two hosts (h4-1, h4-2)
-        # - AS5 has a single router (R5) and two hosts (h5-1, h5-2)
-        # - AS6 has a single router (R6) and two hosts (h6-1, h6-2)
-        create_router_and_hosts(1)
-        create_router_and_hosts(2)
-        create_router_and_hosts(3)
-        create_router_and_hosts(4)
-        create_router_and_hosts(5)
-        create_router_and_hosts(6)
-
-        # link the ASs
-        self.addLink('R1', 'R2')
-        self.addLink('R1', 'R3')
-        self.addLink('R2', 'R3')
-        self.addLink('R2', 'R4')
-        self.addLink('R2', 'R5')
-        self.addLink('R3', 'R4')
-        self.addLink('R3', 'R5')
-        self.addLink('R4', 'R5')
-        self.addLink('R5', 'R6')
-
 
 def parse_hostname(hostname):
     as_num, host_num = hostname.replace('h', '').split('-')
@@ -145,19 +101,19 @@ def parse_hostname(hostname):
 
 def get_ip(hostname):
     as_num, host_num = parse_hostname(hostname)
-    # AS6 is posing as AS1
-    if as_num == 6:
-        as_num = 1
-    host_ip = f'{10+as_num}.0.{host_num}.254/24'
+    # AS4 is posing as AS3
+    if as_num == 4:
+        as_num = 3
+    host_ip = f'{10+as_num}.0.{host_num}.1/24'
     return host_ip
 
 
 def get_gateway(hostname):
     as_num, host_num = parse_hostname(hostname)
-    # AS6 is posing as AS1
-    if as_num == 6:
-        as_num = 1
-    gateway_ip = f'{10+as_num}.0.{host_num}.1'
+    # AS4 is posing as AS3
+    if as_num == 4:
+        as_num = 3
+    gateway_ip = f'{10+as_num}.0.{host_num}.254'
     return gateway_ip
 
 
@@ -173,7 +129,7 @@ def main():
     os.system("pkill -9 zebra > /dev/null 2>&1")
     os.system('pkill -9 -f webserver.py')
 
-    net = Mininet(topo=ComplexTopo(), switch=Router)
+    net = Mininet(topo=SimpleTopo(), switch=Router)
     net.start()
     for router in net.switches:
         router.cmd("sysctl -w net.ipv4.ip_forward=1")
@@ -198,8 +154,8 @@ def main():
         host.cmd("route add default gw %s" % (get_gateway(host.name)))
 
     log("Starting web servers", 'yellow')
-    start_webserver(net, 'h1-1', "Default web server 2.1.1")
-    start_webserver(net, 'h6-1', "*** Attacker web server 2.1.1***")
+    start_webserver(net, 'h3-1', "Default web server 2.1.1")
+    start_webserver(net, 'h4-1', "*** Attacker web server 2.1.1***")
 
     CLI(net, script=args.scriptfile)
     net.stop()
